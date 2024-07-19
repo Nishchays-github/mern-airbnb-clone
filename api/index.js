@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const path = require("path");
+let multer = require("multer");
 const bookingmodel = require("./models/bookings.js");
 require("dotenv").config();
 const app = express();
@@ -13,7 +14,7 @@ const jwtSalt = "nxjadjw23ni2bd";
 const cookieparser = require("cookie-parser");
 const imagedown = require("image-downloader");
 const placemodel = require("./models/place.js");
-const PORT =  4000||process.env.PORT;
+const PORT = 4000 || process.env.PORT;
 app.use(express.json());
 app.use(cookieparser());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -23,7 +24,8 @@ app.use(
     origin: "http://localhost:5173",
   })
 );
-const url =  "mongodb+srv://nishchayparashar1008:Nishchay@cluster1.ywkdbhr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1"
+const url =
+  "mongodb+srv://nishchayparashar1008:Nishchay@cluster1.ywkdbhr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
 mongoose
   .connect(url)
   .then(() => {
@@ -32,6 +34,8 @@ mongoose
   .catch((err) => {
     console.error("Failed to connect to MongoDB", err);
   });
+
+
 
 // Utility function for token verification
 const verifyToken = (token, res, callback) => {
@@ -130,6 +134,24 @@ app.post("/upload-by-link", async (req, res) => {
   }
 });
 
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "./uploads");
+  },
+  filename: function (req, file, cb) {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
+
+app.post("/upload-by-multer", upload.array("photos", 100), (req, res) => {
+  const filenames = req.files.map(file => file.filename);
+  res.json(filenames);
+});
+
+
 app.post("/places", async (req, res) => {
   const { token } = req.cookies;
   const {
@@ -225,7 +247,7 @@ app.put("/places/:id", async (req, res) => {
         maxGuests,
         Price,
       });
-      
+
       await placedoc.save();
       res.json("Data updated");
     } catch (error) {
@@ -233,7 +255,6 @@ app.put("/places/:id", async (req, res) => {
     }
   });
 });
-
 
 app.get("/list-places", async (req, res) => {
   try {
@@ -245,18 +266,15 @@ app.get("/list-places", async (req, res) => {
   }
 });
 
-app.delete("/places-delete/:id", async (req,res)=>{
-  const{id} =  req.params;
-  try{
-    const usedoc =  await placemodel.findByIdAndDelete(id);
-     res.json(usedoc);
+app.delete("/places-delete/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const usedoc = await placemodel.findByIdAndDelete(id);
+    res.json(usedoc);
+  } catch {
+    res.json("server error");
   }
-  catch{
-    res.json('server error');
-  }
-})
-
-
+});
 
 app.get("/photos/:id", async (req, res) => {
   const { id } = req.params;
